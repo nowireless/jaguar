@@ -3,7 +3,7 @@
 *.sublime-workspace
 .*.swp
 .DS_Store
-/jaguar
+/assign_id
 /unbrick
 /decode_id
 /bin/
