@@ -138,33 +138,36 @@ int main(int argc, char *argv[])
     bool wait_for_req;
     bool help;
 
-    po::options_description desc("Allowed options");
-    desc.add_options()
-        ("serial_port,s",   po::value<std::string>(&io_path)->required(),
-            "serial port the Jaguar is connected to")
-        ("firmware,f",      po::value<std::string>(&fw_path)->required(),
-            "firmware binary to flash")
-        ("wait_for_req,w",  po::value<bool>(&wait_for_req)->zero_tokens(),
-            "wait for a request for a firmware update")
-        ("start_address,a", po::value<uint32_t>(&fw_start)->default_value(0x800),
-            "set the firmware start address")
-        ("help,h", po::value<bool>(&help)->zero_tokens(),
-            "show this message")
-        ;
-
-    po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-
-    if (help) {
-        std::cout << desc << std::endl;
-        return 1;
-    }
-
     try {
+        po::options_description desc("Allowed options", 1024, 512);
+        desc.add_options()
+            ("serial_port,s",   po::value<std::string>(&io_path)->required(),
+                "serial port the Jaguar is connected to")
+            ("firmware,f",      po::value<std::string>(&fw_path)->required(),
+                "firmware binary to flash")
+            ("wait_for_req,w",  po::value<bool>(&wait_for_req)->zero_tokens(),
+                "wait for a request for a firmware update")
+            ("start_address,a", po::value<uint32_t>(&fw_start)->default_value(0x800),
+                "set the firmware start address")
+            ("help,h", po::value<bool>(&help)->zero_tokens(),
+                "show this message")
+            ;
+
+        po::variables_map vm;
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+
+        if (help) {
+            std::cout << desc << std::endl;
+            return 1;
+        }
+
         po::notify(vm);
     } catch (std::exception &e) {
-        std::cerr << "bleh" << std::endl;
-        return 0;
+        std::cerr << "err:" << e.what() << std::endl;
+        return 2;
+    } catch (...) {
+        std::cerr << "err: unknown error" << std::endl;
+        return 2;
     }
 
     try {
