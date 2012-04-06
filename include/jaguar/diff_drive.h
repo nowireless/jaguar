@@ -68,6 +68,7 @@ private:
     uint32_t status_ms_;
 
     Side odom_state_;
+
     int32_t odom_curr_left_, odom_curr_right_;
     int32_t odom_last_left_, odom_last_right_;
     double x_, y_, theta_;
