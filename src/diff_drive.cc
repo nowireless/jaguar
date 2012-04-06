@@ -155,9 +155,8 @@ void DiffDriveRobot::odom_update(Side side, int32_t &last_pos, int32_t &curr_pos
 
         // FIXME: Also needs the measured velocities.
         odom_signal_(x_, y_, theta_, 0.0, 0.0, 0.0);
-    } else {
+    } else { /* (odom_state_ == side) */
         std::cerr << "war: periodic update message was dropped" << std::endl;
-        odom_state_ = side;
     }
 }
 
