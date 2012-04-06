@@ -135,8 +135,8 @@ int main(int argc, char *argv[])
     uint32_t fw_start;
     std::string io_path;
     std::string fw_path;
-    bool wait_for_req;
-    bool help;
+    bool wait_for_req = false;
+    bool help = false;
 
     try {
         po::options_description desc("Allowed options", 1024, 512);
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
         po::store(po::parse_command_line(argc, argv, desc), vm);
 
         if (help) {
-            std::cout << desc << std::endl;
+            std::cout << "arg" << std::endl << desc << std::endl;
             return 1;
         }
 
