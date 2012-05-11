@@ -7,6 +7,7 @@
 #include <boost/signal.hpp>
 #include <boost/thread/thread.hpp>
 #include <jaguar/jaguar.h>
+#include <jaguar/jaguar_api.h>
 #include <jaguar/jaguar_bridge.h>
 #include <jaguar/jaguar_broadcaster.h>
 
@@ -22,6 +23,7 @@ struct DiffDriveSettings {
     uint16_t ticks_per_rev;
     double wheel_radius_m;
     double robot_radius_m;
+    double accel_max_mps2;
     BrakeCoastSetting::Enum brake;
 };
 
@@ -29,8 +31,9 @@ class DiffDriveRobot
 {
 public:
     enum Side { kNone, kLeft, kRight };
-    typedef void OdometryCallback(double, double, double, double, double, double);
-    typedef void SpeedCallback(Side, double);
+    typedef void EStopCallback(bool);
+    typedef void DiagnosticsCallback(double, double);
+    typedef void OdometryCallback(double, double, double, double, double);
 
     DiffDriveRobot(DiffDriveSettings const &settings);
     virtual ~DiffDriveRobot(void);
@@ -39,24 +42,52 @@ public:
     virtual void drive(double v, double omega);
     virtual void drive_raw(double v_left, double v_right);
     virtual void drive_brake(bool braking);
+    virtual void drive_spin(double dt);
+
+    virtual void odom_set_circumference(double circum_m);
+    virtual void odom_set_separation(double separation_m);
+    virtual void odom_set_encoders(uint16_t cpr);
+    virtual void odom_set_rate(uint8_t rate_ms);
+    virtual void odom_attach(boost::function<OdometryCallback> callback);
 
     virtual void speed_set_p(double p);
     virtual void speed_set_i(double i);
     virtual void speed_set_d(double d);
 
-    virtual void odom_attach(boost::function<OdometryCallback> callback);
-    virtual void speed_attach(boost::function<SpeedCallback> cb_left);
+    virtual void diag_attach(
+        boost::function<DiagnosticsCallback> callback_left,
+        boost::function<DiagnosticsCallback> callback_right);
+    virtual void diag_set_rate(uint8_t rate_ms);
 
-    virtual void robot_set_encoders(uint16_t ticks_per_rev);
+    virtual void estop_attach(boost::function<EStopCallback> callback);
 
 private:
     // Wheel Odometry
+    struct Odometry {
+        Side side;
+        bool init;
+        double pos_curr, pos_prev;
+        double vel;
+    };
+
     virtual void odom_init(void);
-    virtual void odom_update(Side side, int32_t &last_pos, int32_t &curr_pos, int32_t new_pos);
+    virtual void odom_update(Odometry &side, double pos, double vel);
 
     // Speed Control
     virtual void speed_init(void);
-    virtual void speed_update(Side side, int32_t speed);
+    
+    // Diagnostics
+    struct Diagnostics {
+        bool init;
+        bool stopped;
+        double voltage;
+        double temperature;
+    };
+
+    void diag_init(void);
+    void diag_update(Side side, Diagnostics &diag,
+                     LimitStatus::Enum limits, Fault::Enum faults,
+                     double voltage, double temperature);
 
     virtual void block(can::TokenPtr t1, can::TokenPtr t2);
 
@@ -65,17 +96,23 @@ private:
     jaguar::Jaguar jag_left_, jag_right_;
     boost::mutex mutex_;
 
-    uint32_t status_ms_;
-
+    // Odometry
     Side odom_state_;
-
-    int32_t odom_curr_left_, odom_curr_right_;
-    int32_t odom_last_left_, odom_last_right_;
+    Odometry odom_left_, odom_right_;
     double x_, y_, theta_;
     boost::signal<OdometryCallback> odom_signal_;
-    boost::signal<SpeedCallback> speed_signal_;
+    double wheel_circum_, wheel_sep_;
 
-    double robot_radius_;
+    // Status message
+    bool diag_init_;
+    Diagnostics diag_left_, diag_right_;
+    boost::signal<EStopCallback> estop_signal_;
+    boost::signal<DiagnosticsCallback> diag_left_signal_, diag_right_signal_;
+
+    // Acceleration limiting code.
+    double current_rpm_left_, current_rpm_right_;
+    double target_rpm_left_, target_rpm_right_;
+    double accel_max_;
 };
 
 };

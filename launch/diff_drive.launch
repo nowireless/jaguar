@@ -8,9 +8,9 @@
         <param name="heartbeat" value="50"/> <!-- period in ms -->
         <param name="status"    value="50"/> <!-- period in ms -->
         <!-- Robot Model Parameters -->
-        <param name="ticks_per_rev" value="230"/>
-        <param name="wheel_radius"  value="0.127"/> <!-- meters -->
-        <param name="robot_radius"  value="0.419"/> <!-- meters -->
+        <param name="cpr" value="230"/>
+        <param name="wheel_diameter" value="0.254"/> <!-- meters -->
+        <param name="wheel_separation" value="0.838"/> <!-- meters -->
         <!-- PID Gains -->
         <param name="gain_p" value="1.00"/>
         <param name="gain_i" value="0.02"/>
@@ -19,5 +19,7 @@
         <param name="frame_parent" value="/map"/>
         <param name="frame_child"  value="/odom"/>
         <remap from="/cmd_vel" to="/drive/cmd_vel"/>
+        <!-- Acceleration Limits -->
+        <param name="accel_max" value="10"/>
     </node>
 </launch>
