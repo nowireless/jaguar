@@ -3,6 +3,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
 rosbuild_init()
 rosbuild_add_boost_directories()
+rosbuild_genmsg()
 
 set(ROS_BUILD_TYPE Debug)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
@@ -30,7 +31,7 @@ rosbuild_add_gtest(utests
     test/jaguar_helper_test.cc
 )
 
-rosbuild_link_boost(jaguar signals system thread)
+rosbuild_link_boost(signals system thread)
 target_link_libraries(assign_id jaguar)
 target_link_libraries(diff_drive jaguar)
 target_link_libraries(utests jaguar gtest_main gmock)

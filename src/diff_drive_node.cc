@@ -19,9 +19,12 @@ static ros::Publisher pub_estop;
 static ros::Publisher pub_temp_left, pub_temp_right;
 static ros::Publisher pub_voltage_left, pub_voltage_right;
 static ros::Publisher pub_vleft, pub_vright;
+static ros::Publisher wheels;
 
 static DiffDriveSettings settings;
 static boost::shared_ptr<DiffDriveRobot> robot;
+static boost::shared_ptr<RoboOdom>       rodom;
+
 static boost::shared_ptr<tf::TransformBroadcaster> pub_tf;
 static std::string frame_parent;
 static std::string frame_child;
@@ -130,7 +133,7 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
     }
     if (level & 16) {
         if (0 < config.cpr && config.cpr <= std::numeric_limits<uint16_t>::max()) {
-            robot->odom_set_encoders(config.cpr);
+            rodom->set_encoders(config.cpr);
             ROS_INFO("Reconfigure, CPR = %d", config.cpr);
         } else {
             ROS_WARN("CPR must be a positive 16-bit unsigned integer.");
@@ -140,7 +143,7 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
         if (config.wheel_diameter <= 0) {
             ROS_WARN("Wheel diameter must be positive.");
         } else {
-            robot->odom_set_circumference(M_PI * config.wheel_diameter);
+            rodom->set_circumference(M_PI * config.wheel_diameter);
             ROS_INFO("Reconfigure, Wheel Diameter = %f m", config.wheel_diameter);
         }
     }
@@ -148,7 +151,7 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
         if (config.wheel_separation <= 0) {
             ROS_WARN("Wheel separation must be positive.");
         } else {
-            robot->odom_set_separation(config.wheel_separation);
+            rodom->set_separation(config.wheel_separation);
             ROS_INFO("Reconfigure, Wheel Separation = %f m", config.wheel_separation);
         }
     }
@@ -156,7 +159,7 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
         if (config.odom_rate <= 0 || config.odom_rate > 255) {
             ROS_WARN("Odometry update rate must be positive.");
         } else {
-            robot->odom_set_rate(config.odom_rate);
+            rodom->set_rate(config.odom_rate);
             ROS_INFO("Reconfigure, Odometry Update Rate = %d ms", config.odom_rate);
         }
     }
@@ -195,6 +198,7 @@ int main(int argc, char **argv)
     ros::param::get("~frame_parent", frame_parent);
     ros::param::get("~frame_child", frame_child);
     ros::param::get("~accel_max", settings.accel_max_mps2);
+    ros::param::get("~odom_mode", settings.odom_mode, kContinuous);
 
     // TODO: Read this from a parameter.
     settings.brake = BrakeCoastSetting::kOverrideCoast;
@@ -210,7 +214,8 @@ int main(int argc, char **argv)
     ROS_INFO("Communicating to IDs %d and %d over %s", settings.id_left,
              settings.id_right, settings.port.c_str());
 
-    robot = boost::make_shared<DiffDriveRobot>(settings);
+    rodom = boost::make_shared<RobotOdom>( );
+    robot = boost::make_shared<DiffDriveRobot>(settings, rodom);
 
     // Use dynamic reconfigure for all remaining parameters.
     dynamic_reconfigure::Server<jaguar::JaguarConfig> server;
@@ -228,6 +233,7 @@ int main(int argc, char **argv)
     pub_voltage_left  = nh.advertise<std_msgs::Float64>("voltage_left", 10);
     pub_voltage_right = nh.advertise<std_msgs::Float64>("voltage_right", 10);
     pub_tf = boost::make_shared<tf::TransformBroadcaster>();
+    pub_wheels = nh.advertise<jaguar::Wheels>("wheels", 10);
 
     // These must be registered after the publishers are initialized. Otherwise
     // there is a race condition in the callbacks.

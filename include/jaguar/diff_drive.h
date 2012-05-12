@@ -10,6 +10,7 @@
 #include <jaguar/jaguar_api.h>
 #include <jaguar/jaguar_bridge.h>
 #include <jaguar/jaguar_broadcaster.h>
+#include <jaguar/robot_odom.hh>
 
 namespace jaguar {
 
@@ -30,10 +31,8 @@ struct DiffDriveSettings {
 class DiffDriveRobot
 {
 public:
-    enum Side { kNone, kLeft, kRight };
     typedef void EStopCallback(bool);
     typedef void DiagnosticsCallback(double, double);
-    typedef void OdometryCallback(double, double, double, double, double);
 
     DiffDriveRobot(DiffDriveSettings const &settings);
     virtual ~DiffDriveRobot(void);
@@ -43,12 +42,6 @@ public:
     virtual void drive_raw(double v_left, double v_right);
     virtual void drive_brake(bool braking);
     virtual void drive_spin(double dt);
-
-    virtual void odom_set_circumference(double circum_m);
-    virtual void odom_set_separation(double separation_m);
-    virtual void odom_set_encoders(uint16_t cpr);
-    virtual void odom_set_rate(uint8_t rate_ms);
-    virtual void odom_attach(boost::function<OdometryCallback> callback);
 
     virtual void speed_set_p(double p);
     virtual void speed_set_i(double i);
@@ -62,20 +55,12 @@ public:
     virtual void estop_attach(boost::function<EStopCallback> callback);
 
 private:
-    // Wheel Odometry
-    struct Odometry {
-        Side side;
-        bool init;
-        double pos_curr, pos_prev;
-        double vel;
-    };
-
-    virtual void odom_init(void);
-    virtual void odom_update(Odometry &side, double pos, double vel);
+    // Odometry
+    RobotOdom &odom_;
 
     // Speed Control
-    virtual void speed_init(void);
-    
+    void speed_init(void);
+
     // Diagnostics
     struct Diagnostics {
         bool init;
@@ -89,19 +74,12 @@ private:
                      LimitStatus::Enum limits, Fault::Enum faults,
                      double voltage, double temperature);
 
-    virtual void block(can::TokenPtr t1, can::TokenPtr t2);
+    void block(can::TokenPtr t1, can::TokenPtr t2);
 
     can::JaguarBridge bridge_;
     jaguar::JaguarBroadcaster jag_broadcast_;
     jaguar::Jaguar jag_left_, jag_right_;
     boost::mutex mutex_;
-
-    // Odometry
-    Side odom_state_;
-    Odometry odom_left_, odom_right_;
-    double x_, y_, theta_;
-    boost::signal<OdometryCallback> odom_signal_;
-    double wheel_circum_, wheel_sep_;
 
     // Status message
     bool diag_init_;
