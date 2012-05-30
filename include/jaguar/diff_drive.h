@@ -10,7 +10,7 @@
 #include <jaguar/jaguar_api.h>
 #include <jaguar/jaguar_bridge.h>
 #include <jaguar/jaguar_broadcaster.h>
-#include <jaguar/robot_odom.hh>
+#include <robot_kf/WheelOdometry.h>
 
 namespace jaguar {
 

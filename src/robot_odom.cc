@@ -10,6 +10,11 @@ void RobotOdom::set_separation(double separation_m)
     wheel_sep_ = separation_m;
 }
 
+double RobotOdom::get_separation(void)
+{
+    return separation_m;
+}
+
 void RobotOdom::set_encoders(uint16_t cpr)
 {
     block(
@@ -48,7 +53,6 @@ RobotOdom::RobotOdom(enum odom_mode odom_mode)
     odom_[0].init = odom_[1].init = false;
 
     set_mode(odom_mode);
-
 }
 
 RobotOdom::update(enum Side which, double pos, double vel)
@@ -77,8 +81,7 @@ static Odometry predict_odom(Odometry &odom, chrono_rep cur_time)
     return cur_odom;
 }
 
-void DiffDriveRobot::calc(Odometry &odom_left, Odometry &odom_right,
-        double &v_linear, double &omega)
+boost::tuple<double,double> DiffDriveRobot::calc_dist(Odometry &odom_left, Odometry &odom_right)
 {
         // Compute the difference between the last two updates. Speed is
         // measured in RPMs, so all of these values are measured in
@@ -86,26 +89,60 @@ void DiffDriveRobot::calc(Odometry &odom_left, Odometry &odom_right,
         double const revs_left  = odom_left.pos_curr  - odom_left.pos_prev;
         double const revs_right = odom_right.pos_curr - odom_right.pos_prev;
 
+        // XXX: FIXME: HACK
+        std::swap(revs_left, revs_right);
+
         // Convert from revolutions to meters.
         double const meters_left  = revs_left * wheel_circum_;
         double const meters_right = revs_right * wheel_circum_;
 
-        // Use the robot model to convert from wheel odometry to
-        // two-dimensional motion.
-        // TODO: Switch to a better odometry model.
+        return boost::make_tuple(meters_left, meters_right);
+}
+
+/* warning: modifies state */
+boost::tuple<double,double> DiffDriveRobot::calc_odom(double meters_left, double meters_right)
+{
+        // Current conversion from 2 wheel distances to 2 dimentional motion:
+        // turn-drive-turn
         double const meters  = (meters_left + meters_right) / 2;
         double const radians = (meters_left - meters_right) / wheel_sep_;
-        x_ += meters * cos(theta_);
-        y_ += meters * sin(theta_);
+
+        x_ += meters * cos(theta_ + radians / 2);
+        y_ += meters * sin(theta_ + radians / 2);
         theta_ = angles::normalize_angle(theta_ + radians);
 
         // Estimate the robot's current velocity.
         v_linear = (odom_right_.vel + odom_left_.vel) / 2;
         omega    = (odom_right_.vel - odom_left_.vel) / wheel_sep_;
+
+        return boost::make_tuple(v_linear, omega);
+}
+
+void DiffDriveRobot::calc(Odometry &odom_left, Odometry &odom_right)
+{
+    boost::tuple<double,double> d = calc_dist(odom_left, odom_right);
+
+    boost::tuple<double, double> vo = calc_odom(d(0), d(1))
+
+    odom_signal_(x_, y_, theta_, vo(0), vo(1), d(0), d(1));
+}
+
+void DiffDriveRobot::set_mode(enum odom_mode which)
+{
+    switch(which) {
+        case kOriginal:
+            update_ = odom_update_v1;
+            break;
+        case kContinuous:
+            update_ = odom_update_v2;
+            break;
+    }
 }
 
 void DiffDriveRobot::update_v2(enum Side which, double pos, double vel)
 {
+    if (wheel_circum_ == 0 || wheel_sep_ == 0) return;
+
     Odometry &odom = odom_[which], &odom_other = odom_[!which];
 
     double vel_prev = odom.vel;
@@ -140,11 +177,12 @@ void DiffDriveRobot::update_v2(enum Side which, double pos, double vel)
     else
         calc(other_pred, odom, v_linear, omega);
 
-    odom_signal_(x_, y_, theta_, v_linear, omega);
 }
 
 void DiffDriveRobot::update_v1(enum Side side, double pos, double vel)
 {
+    if (wheel_circum_ == 0 || wheel_sep_ == 0) return;
+
     Odometry &odom = odom_[side];
 
     odom.pos_prev = odom.pos_curr;
@@ -167,21 +205,10 @@ void DiffDriveRobot::update_v1(enum Side side, double pos, double vel)
         double v_linear, omega;
         calc(odom_[kLeft], odom_[kRight], v_linear, omega);
 
-        odom_signal_(x_, y_, theta_, v_linear, omega);
+        odom_signal_(x_, y_, theta_, v_linear, omega, meters_left, meters_right);
         odom_state_ = kNone;
     } else {
         std::cerr << "war: periodic update message was dropped" << std::endl;
     }
 }
 
-void DiffDriveRobot::set_mode(enum odom_mode which)
-{
-    switch(which) {
-        case kOriginal:
-            update_ = odom_update_v1;
-            break;
-        case kContinuous:
-            update_ = odom_update_v2;
-            break;
-    }
-}

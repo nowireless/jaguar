@@ -6,7 +6,6 @@
 #include <nav_msgs/Odometry.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
-
 #include <jaguar/diff_drive.h>
 #include <jaguar/JaguarConfig.h>
 
@@ -18,9 +17,9 @@ static ros::Publisher pub_odom;
 static ros::Publisher pub_estop;
 static ros::Publisher pub_temp_left, pub_temp_right;
 static ros::Publisher pub_voltage_left, pub_voltage_right;
-static ros::Publisher pub_vleft, pub_vright;
-static ros::Publisher wheels;
+static ros::Publisher pub_vleft, pub_vright, pub_wheel;
 
+static ros::Time last_time;
 static DiffDriveSettings settings;
 static boost::shared_ptr<DiffDriveRobot> robot;
 static boost::shared_ptr<RoboOdom>       rodom;
@@ -29,9 +28,12 @@ static boost::shared_ptr<tf::TransformBroadcaster> pub_tf;
 static std::string frame_parent;
 static std::string frame_child;
 static int heartbeat_rate;
+static double wheel_separation, alpha;
+static volatile bool spinlock = false;
 
 static void callback_odom(double x, double y, double theta,
-                          double velocity, double omega)
+                          double velocity, double omega,
+                          double v_left, double v_right)
 {
     ros::Time now = ros::Time::now();
 
@@ -42,6 +44,7 @@ static void callback_odom(double x, double y, double theta,
     msg_tf.child_frame_id  = frame_child;
     msg_tf.transform.translation.x = x;
     msg_tf.transform.translation.y = y;
+    msg_tf.transform.translation.z = 0;
     msg_tf.transform.rotation = tf::createQuaternionMsgFromYaw(theta);
     pub_tf->sendTransform(msg_tf);
 
@@ -57,6 +60,21 @@ static void callback_odom(double x, double y, double theta,
     msg_odom.twist.twist.linear.y = 0;
     msg_odom.twist.twist.angular.z = omega;
     pub_odom.publish(msg_odom);
+
+    robot_kf::WheelOdometry msg_wheel;
+    msg_wheel.header.stamp = now;
+    msg_wheel.header.frame_id = frame_child;
+    msg_wheel.timestep = now - last_time;
+    msg_wheel.separation = rodo.get_speration();
+    msg_wheel.left.movement = v_left;
+    msg_wheel.left.variance = alpha * fabs(v_left);
+    msg_wheel.right.movement = v_right;
+    msg_wheel.right.variance = alpha * fabs(v_right);
+    // TODO: Why are these flipped?
+    std::swap(msg_wheel.right, msg_wheel.left);
+    pub_wheel.publish(msg_wheel);
+
+    last_time = now;
 }
 
 static void callback_estop(bool stopped)
@@ -88,7 +106,6 @@ void callback_speed(DiffDriveRobot::Side side, double speed)
 {
     std_msgs::Float64 msg;
     msg.data = speed;
-
     switch (side) {
     case DiffDriveRobot::kLeft:
         pub_vleft.publish(msg);
@@ -152,6 +169,7 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
             ROS_WARN("Wheel separation must be positive.");
         } else {
             rodom->set_separation(config.wheel_separation);
+            wheel_separation = config.wheel_separation;
             ROS_INFO("Reconfigure, Wheel Separation = %f m", config.wheel_separation);
         }
     }
@@ -185,6 +203,15 @@ void callback_reconfigure(jaguar::JaguarConfig &config, uint32_t level)
         robot->drive_raw(config.setpoint, config.setpoint);
         ROS_INFO("Reconfigure, Setpoint = %f", config.setpoint);
     }
+    if (level & 2048) {
+        if (config.alpha < 0.0) {
+            ROS_WARN("Alpha must be positive");
+        } else {
+            alpha = config.alpha;
+            ROS_INFO("Reconfigure, alpha = %f", alpha);
+        }
+    }
+    spinlock = true;
 }
 
 int main(int argc, char **argv)
@@ -201,6 +228,7 @@ int main(int argc, char **argv)
     ros::param::get("~odom_mode", settings.odom_mode, kContinuous);
 
     // TODO: Read this from a parameter.
+    last_time = ros::Time::now();
     settings.brake = BrakeCoastSetting::kOverrideCoast;
 
     if (!(1 <= settings.id_left  && settings.id_left  <= 63)
@@ -214,7 +242,7 @@ int main(int argc, char **argv)
     ROS_INFO("Communicating to IDs %d and %d over %s", settings.id_left,
              settings.id_right, settings.port.c_str());
 
-    rodom = boost::make_shared<RobotOdom>( );
+    rodom = boost::make_shared<RobotOdom>(kConinuous);
     robot = boost::make_shared<DiffDriveRobot>(settings, rodom);
 
     // Use dynamic reconfigure for all remaining parameters.
@@ -226,8 +254,9 @@ int main(int argc, char **argv)
     sub_twist = nh.subscribe("cmd_vel", 1, &callback_cmd);
     pub_odom  = nh.advertise<nav_msgs::Odometry>("odom", 100);
     pub_estop = nh.advertise<std_msgs::Bool>("estop", 1, true);
-    pub_vleft  = nh.advertise<std_msgs::Float64>("encoder_left", 100);
-    pub_vright = nh.advertise<std_msgs::Float64>("encoder_right", 100);
+    pub_vleft  = nh.advertise<std_msgs::Float64>("encoder_left", 10);
+    pub_vright = nh.advertise<std_msgs::Float64>("encoder_right", 10);
+    pub_wheel  = nh.advertise<robot_kf::WheelOdometry>("wheel_odom", 10);
     pub_temp_left  = nh.advertise<std_msgs::Float64>("temperature_left", 10);
     pub_temp_right = nh.advertise<std_msgs::Float64>("temperature_right", 10);
     pub_voltage_left  = nh.advertise<std_msgs::Float64>("voltage_left", 10);
@@ -240,6 +269,8 @@ int main(int argc, char **argv)
     robot->odom_attach(&callback_odom);
     robot->diag_attach(&callback_diag_left, &callback_diag_right);
     robot->estop_attach(&callback_estop);
+
+    while (!spinlock);
 
     // TODO: Read this heartbeat rate from a parameter.
     ros::Rate heartbeat_rate(50);

@@ -23,6 +23,9 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings, RobotOdom &odo
     , jag_left_(bridge_, settings.id_left)
     , jag_right_(bridge_, settings.id_right)
     , diag_init_(false)
+    // These are set by dynamic_reconfigure. However, there is a race condition
+    // in waiting for the callback. These are sane defaults to prevent
+    // generating +/-infinity or NaN during the race.
     , accel_max_(settings.accel_max_mps2)
     , odom_(odom)
 {
@@ -61,6 +64,7 @@ DiffDriveRobot::~DiffDriveRobot(void)
 
 void DiffDriveRobot::drive(double v, double omega)
 {
+    if (wheel_circum_ == 0 || wheel_sep_ == 0) return;
     double const v_left  = v - 0.5 * wheel_sep_ * omega;
     double const v_right = v + 0.5 * wheel_sep_ * omega;
     drive_raw(v_left, v_right);
@@ -68,12 +72,14 @@ void DiffDriveRobot::drive(double v, double omega)
 
 void DiffDriveRobot::drive_raw(double v_left, double v_right)
 {
+    if (wheel_circum_ == 0 || wheel_sep_ == 0) return;
     target_rpm_left_  = v_left  * 60 / wheel_circum_;
     target_rpm_right_ = v_right * 60 / wheel_circum_;
 }
 
 void DiffDriveRobot::drive_spin(double dt)
 {
+    if (wheel_circum_ == 0 || wheel_sep_ == 0) return;
     double const residual_rpm_left  = target_rpm_left_  - current_rpm_left_;
     double const residual_rpm_right = target_rpm_right_ - current_rpm_right_;
 
@@ -125,7 +131,6 @@ void DiffDriveRobot::heartbeat(void)
 {
     jag_broadcast_.heartbeat();
 }
-
 
 void DiffDriveRobot::diag_attach(
     boost::function<DiagnosticsCallback> callback_left,
