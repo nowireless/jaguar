@@ -68,8 +68,12 @@ static Odometry predict_odom(Odometry &odom, chrono_rep cur_time)
     cur_odom.init    = odom.init;
 
     cur_odom.time    = cur_time;
+#if BOOST_HAS_CHRONO
     double diff = boost::chrono::duration_cast<boost::chrono::duration<double> >(
                     cur_time - odom.time).count();
+#else
+    double diff = (cur_time - odom.time).toSec();
+#endif
 
     cur_odom.vel = odom.vel + odom.accel * diff;
 
@@ -146,15 +150,29 @@ void DiffDriveRobot::update_v2(enum Side which, double pos, double vel)
     Odometry &odom = odom_[which], &odom_other = odom_[!which];
 
     double vel_prev = odom.vel;
+#ifdef BOOST_HAS_CHRONO
     boost::chrono::high_resolution_clock::time_point past = odom.time;
+#else
+    ros::Time past = odom.time;
+#endif
 
     odom.pos_prev = odom.pos_curr;
     odom.pos_curr = pos;
     odom.vel = vel;
-    odom.time = boost::chrono::high_resolution_clock::now();
 
+#ifdef BOOST_HAS_CHRONO
+    odom.time = boost::chrono::high_resolution_clock::now();
+#else
+    odom.time = ros::Time()
+#endif
+
+#ifdef BOOST_HAS_CHRONO
     boost::chrono::high_resolution_clock::duration dur_diff = odom.time - past;
     double diff = boost::chrono::duration_cast<double>(dur_diff);
+#else
+    ros::Duration dur_diff = odom.time - past;
+    double diff = (dur_diff).toSec();
+#endif
 
     odom.accel = (vel - vel_prev) / diff;
 

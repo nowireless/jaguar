@@ -1,9 +1,9 @@
 #ifndef DIFF_DRIVE_H_
 #define DIFF_DRIVE_H_
 
+#include <boost/version.hpp>
 #include <string>
 #include <stdint.h>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/signal.hpp>
 #include <boost/thread/thread.hpp>
 #include <jaguar/jaguar.h>
@@ -12,6 +12,10 @@
 #include <jaguar/jaguar_broadcaster.h>
 #include <jaguar/robot_odom.hh>
 #include <robot_kf/WheelOdometry.h>
+
+#if BOOST_VERSION > 1048000
+#define BOOST_HAS_CHRONO
+#endif
 
 namespace jaguar {
 

@@ -1,9 +1,20 @@
 
 #include <string>
 #include <boost/signal.hpp>
-#include <boost/chrono/system_clocks.hpp>
+#include <boost/version.hpp>
 #include <boost/optional.hpp>
 #include <boost/none.hpp>
+
+
+#if BOOST_VERSION > 1048000
+#define BOOST_HAS_CHRONO 1
+#endif
+
+#if BOOST_HAS_CHRONO
+#include <boost/chrono/system_clocks.hpp>
+#else
+#include <ros.h>
+#endif
 
 namespace jaguar {
 
@@ -35,7 +46,11 @@ private:
         double pos_curr, pos_prev;
         double vel;
         double accel;
+#if BOOST_HAS_CHRONO
         boost::chrono::high_resolution_clock::time_point time;
+#else
+        ros::Time time;
+#endif
     };
 
 #if 0
