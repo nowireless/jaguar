@@ -1,7 +1,6 @@
 #ifndef DIFF_DRIVE_H_
 #define DIFF_DRIVE_H_
 
-#include <boost/version.hpp>
 #include <string>
 #include <stdint.h>
 #include <boost/signal.hpp>
@@ -12,10 +11,6 @@
 #include <jaguar/jaguar_broadcaster.h>
 #include <jaguar/robot_odom.hh>
 #include <robot_kf/WheelOdometry.h>
-
-#if BOOST_VERSION > 1048000
-#define BOOST_HAS_CHRONO
-#endif
 
 namespace jaguar {
 
@@ -75,7 +70,7 @@ private:
     };
 
     void diag_init(void);
-    void diag_update(Side side, Diagnostics &diag,
+    void diag_update(RobotOdom::Side side, Diagnostics &diag,
                      LimitStatus::Enum limits, Fault::Enum faults,
                      double voltage, double temperature);
 
