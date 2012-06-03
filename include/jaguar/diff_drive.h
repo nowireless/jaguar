@@ -34,7 +34,7 @@ public:
     typedef void EStopCallback(bool);
     typedef void DiagnosticsCallback(double, double);
 
-    DiffDriveRobot(DiffDriveSettings const &settings);
+    DiffDriveRobot(DiffDriveSettings const &settings, RobotOdom &odom);
     virtual ~DiffDriveRobot(void);
 
     virtual void heartbeat(void);
