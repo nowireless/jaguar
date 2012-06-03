@@ -34,9 +34,7 @@ public:
     void set_rate(uint8_t rate_ms);
     void set_mode(enum odom_mode which);
     void attach(boost::function<OdometryCallback> callback);
-
-    typedef void (odom_update_fn)(Odometry &side_left, Odometry &side_right, double pos, double val);
-    odom_update_fn update;
+    void update(enum Side which, double pos, double vel);
 
 private:
     // Wheel Odometry
@@ -52,6 +50,9 @@ private:
         ros::Time time;
 #endif
     };
+
+    typedef void (odom_update_fn)(enum Side which, double pos, double val);
+    odom_update_fn update_;
 
 #if 0
     void update_v1(Odometry &side_left, Odometry &side_right, double pos, double vel);
