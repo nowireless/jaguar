@@ -13,7 +13,7 @@
 #if BOOST_HAS_CHRONO
 #include <boost/chrono/system_clocks.hpp>
 #else
-#include <ros.h>
+#include <ros/time.h>
 #endif
 
 namespace jaguar {
