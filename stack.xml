@@ -4,11 +4,8 @@
     via CANbus network. Communication with the first Jaguar is done over RS232,
     which acts as a bridge to other daisy-chained CANbus devices.
   </description>
-  <author>Michael Koval</author>
-  <author>Cody Schafer</author>
+  <author>Michael Koval and Cody Schafer</author>
   <license>BSD</license>
-  <depend stack="common_messages"/>
   <depend stack="geometry" />
   <depend stack="ros" />
-  <depend stack="ros_com" />
 </stack>
