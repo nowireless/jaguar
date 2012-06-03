@@ -6,8 +6,6 @@
   </description>
   <author>Michael Koval and Cody Schafer</author>
   <license>BSD</license>
-  <depend stack="common_messages"/>
   <depend stack="geometry" />
   <depend stack="ros" />
-  <depend stack="ros_com" />
 </stack>
