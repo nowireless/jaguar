@@ -55,9 +55,6 @@ public:
     virtual void estop_attach(boost::function<EStopCallback> callback);
 
 private:
-    // Odometry
-    RobotOdom &odom_;
-
     // Speed Control
     void speed_init(void);
 
@@ -91,6 +88,9 @@ private:
     double current_rpm_left_, current_rpm_right_;
     double target_rpm_left_, target_rpm_right_;
     double accel_max_;
+
+    // Odometry
+    RobotOdom &odom_;
 };
 
 };
