@@ -29,7 +29,7 @@ public:
     typedef void OdometryCallback(double, double, double, double, double, double, double);
     void set_circumference(double circum_m);
     void set_separation(double separation_m);
-    double RobotOdom::get_separation(void);
+    double get_separation(void);
     void set_encoders(uint16_t cpr);
     void set_rate(uint8_t rate_ms);
     void set_mode(enum odom_mode which);
