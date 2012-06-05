@@ -26,6 +26,8 @@ struct DiffDriveSettings {
     double robot_radius_m;
     double accel_max_mps2;
     BrakeCoastSetting::Enum brake;
+    bool flip_left;
+    bool flip_right;
 };
 
 class DiffDriveRobot
@@ -91,6 +93,9 @@ private:
 
     // Odometry
     RobotOdom &odom_;
+
+    // Flipped encoder orientation.
+    double flip_left_, flip_right_;
 };
 
 };

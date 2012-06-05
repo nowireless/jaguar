@@ -28,6 +28,9 @@ DiffDriveRobot::DiffDriveRobot(DiffDriveSettings const &settings, RobotOdom &odo
     // generating +/-infinity or NaN during the race.
     , accel_max_(settings.accel_max_mps2)
     , odom_(odom)
+    , wheel_circum_(0.0), wheel_sep_(0.0)
+    , flip_left_((settings.flip_left) ? -1.0 : 1.0)
+    , flip_right_((settings.flip_right) ? -1.0 : 1.0)
 {
     block(
         jag_left_.config_brake_set(settings.brake),
@@ -204,24 +207,24 @@ void DiffDriveRobot::diag_update(
 void DiffDriveRobot::speed_set_p(double p)
 {
     block(
-        jag_left_.speed_set_p(p),
-        jag_right_.speed_set_p(p)
+        jag_left_.speed_set_p(flip_left_ * p),
+        jag_right_.speed_set_p(flip_right_ * p)
     );
 }
 
 void DiffDriveRobot::speed_set_i(double i)
 {
     block(
-        jag_left_.speed_set_i(i),
-        jag_right_.speed_set_i(i)
+        jag_left_.speed_set_i(flip_left_ * i),
+        jag_right_.speed_set_i(flip_right_ * i)
     );
 }
 
 void DiffDriveRobot::speed_set_d(double d)
 {
     block(
-        jag_left_.speed_set_d(d),
-        jag_right_.speed_set_d(d)
+        jag_left_.speed_set_d(flip_left_ * d),
+        jag_right_.speed_set_d(flip_right_ * d)
     );
 }
 

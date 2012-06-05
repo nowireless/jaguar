@@ -26,7 +26,7 @@ public:
     RobotOdom(enum odom_mode odom_mode);
     virtual ~RobotOdom(void);
 
-    typedef void OdometryCallback(double, double, double, double, double, double, double);
+    typedef void OdometryCallback(double, double, double, double, double, double, double, double, double);
     void set_circumference(double circum_m);
     void set_separation(double separation_m);
     double get_separation(void);

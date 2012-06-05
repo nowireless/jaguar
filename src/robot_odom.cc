@@ -104,7 +104,7 @@ boost::tuple<double,double> DiffDriveRobot::calc_dist(Odometry &odom_left, Odome
 }
 
 /* warning: modifies state */
-boost::tuple<double,double> DiffDriveRobot::calc_odom(double meters_left, double meters_right)
+boost::tuple<double,double,double,double> DiffDriveRobot::calc_odom(double meters_left, double meters_right)
 {
         // Current conversion from 2 wheel distances to 2 dimentional motion:
         // turn-drive-turn
@@ -116,19 +116,23 @@ boost::tuple<double,double> DiffDriveRobot::calc_odom(double meters_left, double
         theta_ = angles::normalize_angle(theta_ + radians);
 
         // Estimate the robot's current velocity.
-        v_linear = (odom_right_.vel + odom_left_.vel) / 2;
-        omega    = (odom_right_.vel - odom_left_.vel) / wheel_sep_;
+        double const v[2] = {
+            odom_[kLeft].vel * wheel_circum_ / 60,
+            odom_[kRight].vel * wheel_circum_ / 60
+        };
+        v_linear = (v[1] + v[0]) / 2;
+        omega    = (v[1] - v[0]) / wheel_sep_;
 
-        return boost::make_tuple(v_linear, omega);
+        return boost::make_tuple(v_linear, omega, vl, vr);
 }
 
 void DiffDriveRobot::calc(Odometry &odom_left, Odometry &odom_right)
 {
     boost::tuple<double,double> d = calc_dist(odom_left, odom_right);
 
-    boost::tuple<double, double> vo = calc_odom(d(0), d(1))
+    boost::tuple<double, double, double, double> vo = calc_odom(d(0), d(1))
 
-    odom_signal_(x_, y_, theta_, vo(0), vo(1), d(0), d(1));
+    odom_signal_(x_, y_, theta_, vo(0), vo(1), d(0), d(1), vo(2), vo(3));
 }
 
 void DiffDriveRobot::set_mode(enum odom_mode which)
