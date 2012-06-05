@@ -91,11 +91,17 @@ TokenPtr JaguarBridge::recv(uint32_t id)
 
     // We can't use boost::make_shared because JaguarToken's constructor is
     // private, so we can only call it from a friend class.
+    token_ptr r = boost::shared_ptr<JaguarToken>(new JaguarToken(*this, id));
+
     std::pair<token_table::iterator, bool> it = tokens_.insert(
-        std::make_pair(id, boost::shared_ptr<JaguarToken>(new JaguarToken(*this, id)))
+        std::make_pair(id, boost::weak_ptr<JaguarToken>(r))
     );
+
+    // The key already exsisting is banned.
+    // FIXME: if it does already exsist, should we await it's removal?
     assert(it.second);
-    return it.first->second;
+
+    return r;
 }
 
 CallbackToken JaguarBridge::attach_callback(uint32_t id, uint32_t id_mask, recv_callback cb)
@@ -224,11 +230,7 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
 void JaguarBridge::discard_token(JaguarToken &token)
 {
     boost::mutex::scoped_lock lock(token_mutex_);
-    token_table::iterator token_it = tokens_.find(token.id_);
-    if (token_it != tokens_.end()) {
-        token_ptr token = token_it->second;
-        tokens_.erase(token_it);
-    }
+    tokens_.erase(token.id_);
 }
 
 void JaguarBridge::remove_token(boost::shared_ptr<CANMessage> msg)
@@ -236,10 +238,12 @@ void JaguarBridge::remove_token(boost::shared_ptr<CANMessage> msg)
     boost::mutex::scoped_lock lock(token_mutex_);
 
     // Wake anyone who is blocking for a response.
+    // XXX: We assume only one entity is waiting.
     token_table::iterator token_it = tokens_.find(msg->id);
     if (token_it != tokens_.end()) {
-        token_ptr token = token_it->second;
-        token->unblock(msg);
+        token_ptr token = token_it->second.lock();
+        if (token)
+            token->unblock(msg);
         tokens_.erase(token_it);
     }
 }
@@ -319,8 +323,8 @@ JaguarToken::JaguarToken(JaguarBridge &bridge, uint32_t id)
 
 JaguarToken::~JaguarToken(void)
 {
-    // FIXME: This causes deadlock (or something similar).
-    //bridge_.discard_token(*this);
+    // Must discard or a dangling weak_ptr is left in table.
+    bridge_.discard_token(*this);
 }
 
 void JaguarToken::discard(void)

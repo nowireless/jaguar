@@ -84,7 +84,7 @@ private:
     typedef std::list<mask_callback> callback_list;
 
     typedef boost::shared_ptr<JaguarToken> token_ptr;
-    typedef std::map<uint32_t, token_ptr>  token_table;
+    typedef std::map<uint32_t, boost::weak_ptr<JaguarToken> >  token_table;
 
     static uint8_t const kSOF, kESC;
     static uint8_t const kSOFESC, kESCESC;
