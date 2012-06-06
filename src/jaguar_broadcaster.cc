@@ -47,7 +47,7 @@ void JaguarBroadcaster::broadcast(SystemControl::Enum api)
     std::vector<uint8_t> payload;
     uint32_t id = pack_id(0, Manufacturer::kBroadcastMessage, DeviceType::kBroadcastMessage,
     	                  APIClass::kBroadcastMessage, api);
-	can_.send(can::CANMessage(id, payload));
+	can_.transaction(can::CANMessage(id, payload));
 }
 
 template <typename T>
@@ -58,7 +58,7 @@ void JaguarBroadcaster::broadcast(SystemControl::Enum api, T const &payload_raw)
 
     uint32_t id = pack_id(0, Manufacturer::kBroadcastMessage, DeviceType::kBroadcastMessage,
     	                  APIClass::kBroadcastMessage, api);
-	can_.send(can::CANMessage(id, payload));
+	can_.transaction(can::CANMessage(id, payload));
 }
 
 };

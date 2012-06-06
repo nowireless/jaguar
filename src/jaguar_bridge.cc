@@ -85,7 +85,36 @@ void JaguarBridge::send(CANMessage const &message)
     asio::write(serial_, asio::buffer(&buffer[0], buffer.size()));
 }
 
-TokenPtr JaguarBridge::recv(uint32_t id)
+TokenPtr JaguarBridge::transaction(CANMessage const &msg, uint32_t resp_id)
+{
+    TokenPtr t = recv_only(resp_id);
+    send(msg);
+    return t;
+}
+
+void JaguarBridge::transaction(CANMessage const &msg)
+{
+    send(msg);
+}
+
+std::pair<CallbackToken, TokenPtr> JaguarBridge::start_periodic(CANMessage const &msg, uint32_t resp_id, recv_callback cb, uint32_t cb_id)
+{
+    CallbackToken c = attach_callback(cb, cb_id);
+    TokenPtr t = recv_only(resp_id);
+    send(msg);
+
+    return std::make_pair(c, t);
+}
+
+CallbackToken JaguarBridge::start_periodic(CANMessage const &msg, recv_callback cb, uint32_t cb_id)
+{
+    CallbackToken c = attach_callback(cb, cb_id);
+    send(msg);
+
+    return c;
+}
+
+TokenPtr JaguarBridge::recv_only(uint32_t id)
 {
     boost::mutex::scoped_lock lock(token_mutex_);
 
@@ -104,7 +133,7 @@ TokenPtr JaguarBridge::recv(uint32_t id)
     return r;
 }
 
-CallbackToken JaguarBridge::attach_callback(uint32_t id, uint32_t id_mask, recv_callback cb)
+CallbackToken JaguarBridge::attach_callback(recv_callback cb, uint32_t id, uint32_t id_mask)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
 
@@ -126,7 +155,7 @@ CallbackToken JaguarBridge::attach_callback(boost::function<error_callback_sig> 
     return error_signal_.connect(cb);
 }
 
-CallbackToken JaguarBridge::attach_callback(uint32_t id, recv_callback cb)
+CallbackToken JaguarBridge::attach_callback(recv_callback cb, uint32_t id)
 {
     boost::mutex::scoped_lock lock(callback_mutex_);
 

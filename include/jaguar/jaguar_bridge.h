@@ -66,15 +66,28 @@ public:
     JaguarBridge(std::string port);
     virtual ~JaguarBridge(void);
 
-    virtual void send(CANMessage const &message);
-    virtual TokenPtr recv(uint32_t id);
+    /* a transaction with a response */
+    virtual TokenPtr transaction   (CANMessage const &msg, uint32_t resp_id);
+    /* a transaction with _no_ response  */
+    virtual void     transaction   (CANMessage const &msg);
 
-    virtual CallbackToken attach_callback(uint32_t id, recv_callback cb);
-    virtual CallbackToken attach_callback(uint32_t id, uint32_t id_mask,
-		    recv_callback cb);
+    /* a transaction with a response which begins a periodic message */
+    virtual std::pair<CallbackToken, TokenPtr> start_periodic(CANMessage const &msg, uint32_t resp_id, recv_callback cb, uint32_t cb_id);
+    /* a transaction with _no_ response which begins a periodic message */
+    virtual CallbackToken start_periodic(CANMessage const &msg, recv_callback cb, uint32_t cb_id);
+
+    /* process errors recived asynchronously */
     virtual CallbackToken attach_callback(error_callback cb);
 
+    virtual CallbackToken attach_callback(recv_callback cb, uint32_t id);
+    virtual CallbackToken attach_callback(recv_callback cb, uint32_t id, uint32_t id_mask);
+
+    /* for very special cases */
+    virtual TokenPtr recv_only(uint32_t id);
 private:
+
+    void send(CANMessage const &message);
+
     typedef boost::signals2::signal<recv_callback_sig> callback_signal;
     typedef boost::shared_ptr<callback_signal> callback_signal_ptr;
 

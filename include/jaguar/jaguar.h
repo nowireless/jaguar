@@ -93,14 +93,14 @@ private:
     template <typename T> T rescale(double x);
 
     template <typename G>
-    void send(APIClass::Enum api_class, uint8_t api_index, G const &generator);
+    can::CANMessage make_msg(APIClass::Enum api_class, uint8_t api_index, G const &generator);
     template <typename G>
     can::TokenPtr send_ack(APIClass::Enum api_class, uint8_t api_index, G const &generator);
-    can::TokenPtr recv_ack(void);
+    template <typename G>
+    void send_no_ack(APIClass::Enum api_class, uint8_t api_index, G const &generator);
 
     uint8_t const num_;
     can::CANBridge &can_;
-    can::TokenPtr token_;
 
     std::vector<DiagSignalPtr> sig_diag_;
     std::vector<OdomSignalPtr> sig_odom_;

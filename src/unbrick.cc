@@ -56,18 +56,11 @@ public:
     : can_(can)
     {}
 
-    can::TokenPtr recv(uint16_t api)
-    {
-        return can_.recv(upd_id(api));
-    }
-
     can::TokenPtr send_ack(uint16_t api,
                            std::vector<uint8_t> const &data,
                            uint16_t ack_api = jaguar::FirmwareUpdate::kAck)
     {
-        can::TokenPtr tp = recv(ack_api);
-        send(api, data);
-        return tp;
+        return can_.transaction(can::CANMessage(upd_id(api), data), upd_id(ack_api));
     }
 
     template <typename G>
@@ -105,23 +98,13 @@ public:
 
     void wait_for_request(void)
     {
-        can_.recv(jaguar::FirmwareUpdate::kRequest)->block();
+        can_.recv_only(jaguar::FirmwareUpdate::kRequest)->block();
     }
 
     can::TokenPtr send_data(std::vector<uint8_t> const &data)
     {
         assert(data.size() <= 8 && data.size() > 0);
         return send_ack(jaguar::FirmwareUpdate::kSendData, data);
-    }
-
-    void send(uint16_t api)
-    {
-        can_.send(can::CANMessage(upd_id(api)));
-    }
-
-    void send(uint16_t api, std::vector<uint8_t> const &payload)
-    {
-        can_.send(can::CANMessage(upd_id(api), payload));
     }
 
 private:
@@ -185,17 +168,14 @@ int main(int argc, char *argv[])
         using boost::phoenix::arg_names::arg4;
 
         /* XXX: spy on all recv'd data */
-        can.attach_callback(0, 0, std::cerr << arg1);
+        can.attach_callback(std::cerr << arg1, 0, 0);
         can.attach_callback(std::cerr
                 << arg1 << ":" << arg2 << ":" << arg3 << ":" << arg4);
 
         /* wait for Request & ping ack */
         if (wait_for_req) {
-            can::TokenPtr req_token  = bl.recv(jaguar::FirmwareUpdate::kRequest);
-
             std::cout << "waiting for request." << std::endl;
-            req_token->block();
-
+            bl.wait_for_request();
             std::cout << "recv'd req." << std::endl;
         }
 

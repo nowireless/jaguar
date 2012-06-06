@@ -115,7 +115,7 @@ can::TokenPtr Jaguar::voltage_set(double voltage, uint8_t group)
 
 void Jaguar::voltage_set_noack(double voltage)
 {
-    send(
+    send_no_ack(
         APIClass::kVoltageControl, VoltageControl::kVoltageSetNoACK,
         little_word(rescale<int16_t>(voltage))
     );
@@ -123,7 +123,7 @@ void Jaguar::voltage_set_noack(double voltage)
 
 void Jaguar::voltage_set_noack(double voltage, uint8_t group)
 {
-    send(
+    send_no_ack(
         APIClass::kVoltageControl, VoltageControl::kVoltageSetNoACK,
         little_word(rescale<int16_t>(voltage)) << byte_(group)
     );
@@ -198,7 +198,7 @@ can::TokenPtr Jaguar::speed_set(double speed, uint8_t group)
 
 void Jaguar::speed_set_noack(double speed)
 {
-    send(
+    send_no_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedSetNoACK,
         little_dword(double_to_s16p16(speed))
     );
@@ -206,7 +206,7 @@ void Jaguar::speed_set_noack(double speed)
 
 void Jaguar::speed_set_noack(double speed, uint8_t group)
 {
-    send(
+    send_no_ack(
         APIClass::kSpeedControl, SpeedControl::kSpeedSetNoACK,
         little_dword(double_to_s16p16(speed)) << byte_(group)
     );
@@ -273,14 +273,14 @@ can::TokenPtr Jaguar::position_set(double position, uint8_t group) {
 }
 
 void Jaguar::position_set_noack(double position) {
-    send(
+    send_no_ack(
         APIClass::kPositionControl, PositionControl::kPositionSetNoACK,
         little_dword(double_to_s16p16(position))
     );
 }
 
 void Jaguar::position_set_noack(double position, uint8_t group) {
-    send(
+    send_no_ack(
         APIClass::kPositionControl, PositionControl::kPositionSetNoACK,
         little_dword(double_to_s16p16(position)) << byte_(group)
     );
@@ -335,12 +335,8 @@ can::TokenPtr Jaguar::periodic_config_diag(uint8_t index, boost::function<DiagCa
         APIClass::kPeriodicStatus, PeriodicStatus::kPeriodicStatus + index
     );
     sig_diag_[index]->connect(callback);
-    can_.attach_callback(status_id, boost::bind(&Jaguar::diag_unpack, this, _1, index));
 
-    // Wait for an ACK in response to the config message.
-    can::TokenPtr token =  can_.recv(ack_id);
-    can_.send(msg);
-    return token;
+    return can_.start_periodic(msg, ack_id, boost::bind(&Jaguar::diag_unpack, this, _1, index), status_id).second;
 }
 
 can::TokenPtr Jaguar::periodic_config_odom(uint8_t index, boost::function<OdomCallback> callback)
@@ -369,12 +365,8 @@ can::TokenPtr Jaguar::periodic_config_odom(uint8_t index, boost::function<OdomCa
         APIClass::kPeriodicStatus, PeriodicStatus::kPeriodicStatus + index
     );
     sig_odom_[index]->connect(callback);
-    can_.attach_callback(status_id, boost::bind(&Jaguar::odom_unpack, this, _1, index));
 
-    // Wait for an ACK in response to the config message.
-    can::TokenPtr token =  can_.recv(ack_id);
-    can_.send(msg);
-    return token;
+    return can_.start_periodic(msg, ack_id, boost::bind(&Jaguar::odom_unpack, this, _1, index), status_id).second;
 }
 
 can::TokenPtr Jaguar::periodic_config(uint8_t index, AggregateStatus statuses)
@@ -402,12 +394,8 @@ can::TokenPtr Jaguar::periodic_config(uint8_t index, AggregateStatus statuses)
         kManufacturer, kDeviceType,
         APIClass::kPeriodicStatus, PeriodicStatus::kPeriodicStatus + index
     );
-    can_.attach_callback(status_id, boost::bind(&Jaguar::periodic_unpack, this, _1, statuses));
 
-    // Wait for an ACK in response to the config message.
-    can::TokenPtr token =  can_.recv(ack_id);
-    can_.send(msg);
-    return token;
+    return can_.start_periodic(msg, ack_id, boost::bind(&Jaguar::periodic_unpack, this, _1, statuses), status_id).second;
 }
 
 
@@ -464,7 +452,7 @@ T Jaguar::rescale(double x)
 }
 
 template <typename G>
-void Jaguar::send(APIClass::Enum api_class, uint8_t api_index, G const &generator)
+can::CANMessage Jaguar::make_msg(APIClass::Enum api_class, uint8_t api_index, G const &generator)
 {
     uint32_t const id = pack_id(num_, kManufacturer, kDeviceType, api_class, api_index);
     can::CANMessage msg(id);
@@ -473,23 +461,20 @@ void Jaguar::send(APIClass::Enum api_class, uint8_t api_index, G const &generato
     bool success = boost::spirit::karma::generate(payload, generator);
     assert(success);
 
-    can_.send(msg);
+    return msg;
+}
+
+template <typename G>
+void Jaguar::send_no_ack(APIClass::Enum api_class, uint8_t api_index, G const &generator)
+{
+    can_.transaction(make_msg(api_class, api_index, generator));
 }
 
 template <typename G>
 can::TokenPtr Jaguar::send_ack(APIClass::Enum api_class, uint8_t api_index, G const &generator)
 {
-    assert(!token_ || token_->ready());
     uint32_t const ack_id = pack_ack(num_, kManufacturer, kDeviceType);
-    can::TokenPtr token =  can_.recv(ack_id);
-    send(api_class, api_index, generator);
-    return token;
-}
-
-can::TokenPtr Jaguar::recv_ack(void)
-{
-    token_ = can_.recv(pack_ack(num_, kManufacturer, kDeviceType));
-    return token_;
+    return can_.transaction(make_msg(api_class, api_index, generator), ack_id);
 }
 
 AggregateStatus operator<<(AggregateStatus aggregate, Status::Ptr const &status) {

@@ -41,12 +41,24 @@ public:
     typedef void error_callback_sig(char const *func, char const *file, unsigned line, std::string const &msg);
     typedef boost::function<error_callback_sig> error_callback;
 
-    virtual void send(CANMessage const &message) = 0;
-    virtual TokenPtr recv(uint32_t id) = 0;
-    virtual CallbackToken attach_callback(uint32_t id, recv_callback cb) = 0;
-    virtual CallbackToken attach_callback(uint32_t id, uint32_t id_mask,
-		    recv_callback cb) = 0;
+    /* a transaction with a response */
+    virtual TokenPtr transaction   (CANMessage const &msg, uint32_t resp_id) = 0;
+    /* a transaction with _no_ response  */
+    virtual void     transaction   (CANMessage const &msg) = 0;
+
+    /* a transaction with a response which begins a periodic message */
+    virtual std::pair<CallbackToken, TokenPtr> start_periodic(CANMessage const &msg, uint32_t resp_id, recv_callback cb, uint32_t cb_id) = 0;
+    /* a transaction with _no_ response which begins a periodic message */
+    virtual CallbackToken start_periodic(CANMessage const &msg, recv_callback cb, uint32_t cb_id) = 0;
+
+    /* process errors recived asynchronously */
     virtual CallbackToken attach_callback(error_callback cb) = 0;
+
+    virtual CallbackToken attach_callback(recv_callback cb, uint32_t id) = 0;
+    virtual CallbackToken attach_callback(recv_callback cb, uint32_t id, uint32_t id_mask) = 0;
+
+    /* for very special cases */
+    virtual TokenPtr recv_only(uint32_t id) = 0;
 };
 
 class Token : boost::noncopyable
