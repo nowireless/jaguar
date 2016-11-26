@@ -6,9 +6,6 @@ project(jaguar)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
     roscpp
-    robot_kf
-    dynamic_reconfigure
-    tf
 )
 
 ## System dependencies are found with CMake's conventions
@@ -86,9 +83,9 @@ find_package(Boost REQUIRED COMPONENTS signals system thread)
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-generate_dynamic_reconfigure_options(
-   cfg/JaguarNode.cfg
-)
+#generate_dynamic_reconfigure_options(
+#   cfg/JaguarNode.cfg
+#)
 
 ###################################
 ## catkin specific configuration ##
@@ -116,7 +113,6 @@ catkin_package(
 include_directories(
         ${catkin_INCLUDE_DIRS}
         include
-        cfg/cpp
 )
 
 # Declare a C++ library
@@ -137,10 +133,10 @@ add_executable(assign_id
     src/assign_id.cc
 )
 
-add_executable(diff_drive
-    src/diff_drive.cc
-    src/diff_drive_node.cc
+add_executable(decode_id
+    src/decode_id.cc
 )
+
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(jaguar_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -157,10 +153,10 @@ target_link_libraries(assign_id
     jaguar
 )
 
-target_link_libraries(diff_drive
-    ${catkin_LIBRARIES}
+target_link_libraries(decode_id
     jaguar
 )
+
 
 #############
 ## Install ##
