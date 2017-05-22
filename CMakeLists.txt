@@ -137,6 +137,10 @@ add_executable(decode_id
     src/decode_id.cc
 )
 
+add_executable(jaguar_test
+    src/jaguar_test.cpp
+)
+
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(jaguar_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -145,17 +149,13 @@ add_executable(decode_id
 # target_link_libraries(jaguar_node
 #   ${catkin_LIBRARIES}
 # )
-target_link_libraries(jaguar
-    ${Boost_LIBRARIES}
-)
+target_link_libraries(jaguar ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
-target_link_libraries(assign_id
-    jaguar
-)
+target_link_libraries(assign_id jaguar)
 
-target_link_libraries(decode_id
-    jaguar
-)
+target_link_libraries(decode_id jaguar)
+
+target_link_libraries(jaguar_test jaguar)
 
 
 #############
