@@ -5,6 +5,7 @@
 #include <boost/lambda/lambda.hpp>
 #include <boost/assert.hpp>
 #include <jaguar/jaguar_bridge.h>
+#include <ros/ros.h>
 
 namespace asio = boost::asio;
 
@@ -87,8 +88,12 @@ void JaguarBridge::send(CANMessage const &message)
 
 TokenPtr JaguarBridge::transaction(CANMessage const &msg, uint32_t resp_id)
 {
+    ROS_INFO("Starting recv");
     TokenPtr t = recv_only(resp_id);
+    ROS_INFO("Sending msg...");
     send(msg);
+    ROS_INFO("...sending");
+
     return t;
 }
 
@@ -116,7 +121,9 @@ CallbackToken JaguarBridge::start_periodic(CANMessage const &msg, recv_callback 
 
 TokenPtr JaguarBridge::recv_only(uint32_t id)
 {
-    boost::mutex::scoped_lock lock(token_mutex_);
+    ROS_INFO("ro Grabbing token mutex");
+    boost::recursive_mutex::scoped_lock lock(token_mutex_);
+    ROS_INFO("ro Grabbed");
 
     // We can't use boost::make_shared because JaguarToken's constructor is
     // private, so we can only call it from a friend class.
@@ -130,6 +137,7 @@ TokenPtr JaguarBridge::recv_only(uint32_t id)
     // FIXME: if it does already exsist, should we await it's removal?
     assert(it.second);
 
+    ROS_INFO("ro released");
     return r;
 }
 
@@ -258,13 +266,15 @@ void JaguarBridge::recv_handle(boost::system::error_code const& error, size_t co
 
 void JaguarBridge::discard_token(JaguarToken &token)
 {
-    boost::mutex::scoped_lock lock(token_mutex_);
+    boost::recursive_mutex::scoped_lock lock(token_mutex_);
     tokens_.erase(token.id_);
 }
 
 void JaguarBridge::remove_token(boost::shared_ptr<CANMessage> msg)
 {
-    boost::mutex::scoped_lock lock(token_mutex_);
+    ROS_INFO("rt Grabbing");
+    boost::recursive_mutex::scoped_lock lock(token_mutex_);
+    ROS_INFO("rt Grabbed");
 
     // Wake anyone who is blocking for a response.
     // XXX: We assume only one entity is waiting.
@@ -275,6 +285,7 @@ void JaguarBridge::remove_token(boost::shared_ptr<CANMessage> msg)
             token->unblock(msg);
         tokens_.erase(token_it);
     }
+    ROS_INFO("rt released");
 }
 
 void JaguarBridge::recv_message(boost::shared_ptr<CANMessage> msg)
@@ -353,6 +364,7 @@ JaguarToken::JaguarToken(JaguarBridge &bridge, uint32_t id)
 JaguarToken::~JaguarToken(void)
 {
     // Must discard or a dangling weak_ptr is left in table.
+    ROS_INFO("Bye");
     bridge_.discard_token(*this);
 }
 
