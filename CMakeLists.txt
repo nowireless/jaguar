@@ -144,6 +144,10 @@ add_executable(jaguar_test
     src/jaguar_test.cpp
 )
 
+add_executable(jaguar_drive_node
+    src/jaguar_drive_node.cpp
+)
+
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(jaguar_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -159,6 +163,8 @@ target_link_libraries(assign_id jaguar)
 target_link_libraries(decode_id jaguar)
 
 target_link_libraries(jaguar_test jaguar)
+
+target_link_libraries(jaguar_drive_node jaguar)
 
 
 #############
