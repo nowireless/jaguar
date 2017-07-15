@@ -1,6 +1,5 @@
 #include <cstring>
 #include <jaguar/jaguar_broadcaster.h>
-#include <ros/ros.h>
 
 namespace jaguar {
 
@@ -46,12 +45,9 @@ void JaguarBroadcaster::synchronous_update(uint8_t group)
 void JaguarBroadcaster::broadcast(SystemControl::Enum api)
 {
     std::vector<uint8_t> payload;
-    ROS_INFO("Packing...");
     uint32_t id = pack_id(0, Manufacturer::kBroadcastMessage, DeviceType::kBroadcastMessage,
     	                  APIClass::kBroadcastMessage, api);
-    ROS_INFO("...sending...");
     can_.transaction(can::CANMessage(id, payload));
-    ROS_INFO("...sent");
 }
 
 template <typename T>
