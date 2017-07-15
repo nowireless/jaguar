@@ -41,8 +41,8 @@ int main(int argc, char **argv) {
     gVel.store(0);
 
 
-//    can::JaguarBridge bridge("/dev/ttyUSB0");
-    can::JaguarBridge bridge("/dev/ttyS0");
+    can::JaguarBridge bridge("/dev/ttyUSB0");
+//    can::JaguarBridge bridge("/dev/ttyS0");
     jaguar::JaguarBroadcaster jag_broadcaster(bridge);
 
     jag_broadcaster.heartbeat();
@@ -76,14 +76,14 @@ int main(int argc, char **argv) {
     while (ros::ok()) {
 //        ROS_INFO("Starting loop");
 //        block(jag.speed_set(10));
-        ROS_INFO("Cmding...");
-        block(jag.voltage_set(0.15));
-	ROS_INFO("...cmd sent");
+//        ROS_INFO("Cmding...");
+        block(jag.voltage_set(1.0));
+//	    ROS_INFO("...cmd sent");
 
         //Send heartbeat
-        ROS_INFO("Sending heartbeat...");
+//        ROS_INFO("Sending heartbeat...");
         jag_broadcaster.heartbeat();
-        ROS_INFO("...sent heartbeat");
+//        ROS_INFO("...sent heartbeat");
 
         std_msgs::Float32 posMsg;
         posMsg.data = gPos.load();
@@ -93,9 +93,9 @@ int main(int argc, char **argv) {
         velMsg.data = gVel.load();
         velPub.publish(velMsg);
 
-	ROS_INFO("Spinning...");
+//        ROS_INFO("Spinning...");
         ros::spinOnce();
-	ROS_INFO("...done spinning");
+//	    ROS_INFO("...done spinning");
         heartbeat_rate.sleep();
 //        ROS_INFO("Ending loop");
     }
