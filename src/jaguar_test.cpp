@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
 
     jag_broadcaster.heartbeat();
 
-    jaguar::Jaguar jag(bridge, 4);
+    jaguar::Jaguar jag(bridge, 2);
 
     // Needs to be performed to resume communication with the jaguars
     ROS_INFO("Resetting jaguar");
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
     block(jag.position_set_reference(jaguar::PositionReference::kQuadratureEncoder));
     block(jag.config_encoders_set(360));
     block(jag.periodic_config_odom(0, boost::bind(&callback_odom, _1, _2) ));
-    block(jag.periodic_enable(0, 100));
+    block(jag.periodic_enable(0, 20));
 
     block(jag.periodic_config_diag(1, boost::bind(&callback_diag, _1, _2, _3, _4)));
     block(jag.periodic_enable(1, 500));
