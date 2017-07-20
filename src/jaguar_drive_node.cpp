@@ -88,6 +88,8 @@ int main(int argc, char **argv) {
     broadcaster.system_reset();
     ROS_INFO("Waiting for them to reset");
 
+    sleep(1);
+
     ROS_INFO("Configuring break override");
     block(left.config_brake_set(jaguar::BrakeCoastSetting::kOverrideBrake),
           right.config_brake_set(jaguar::BrakeCoastSetting::kOverrideBrake));
