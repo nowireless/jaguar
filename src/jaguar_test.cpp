@@ -10,6 +10,8 @@
 #include <ros/ros.h>
 #include <std_msgs/Float32.h>
 
+#include <fstream>
+
 void block(can::TokenPtr t) {
 //    ROS_INFO("Sending...");
 //    t->block();
@@ -47,7 +49,7 @@ int main(int argc, char **argv) {
 
     jag_broadcaster.heartbeat();
 
-    jaguar::Jaguar jag(bridge, 2);
+    jaguar::Jaguar jag(bridge, 4);
 
     // Needs to be performed to resume communication with the jaguars
     ROS_INFO("Resetting jaguar");
@@ -73,17 +75,35 @@ int main(int argc, char **argv) {
     jag_broadcaster.system_resume();
 
     ros::Rate heartbeat_rate(50);
-    while (ros::ok()) {
-//        ROS_INFO("Starting loop");
-//        block(jag.speed_set(10));
-//        ROS_INFO("Cmding...");
-        block(jag.voltage_set(1.0));
-//	    ROS_INFO("...cmd sent");
 
-        //Send heartbeat
-//        ROS_INFO("Sending heartbeat...");
+    std::ofstream f;
+    f.open("motor.csv");
+    f << "power, vel" << std::endl;
+
+    int i = 0;
+    double out = -1.0;
+
+    while (ros::ok()) {
+        if(50 < i) {
+            i = 0;
+            out += 0.02;
+        }
+
+        if(out <= 1.0) {
+            block(jag.voltage_set(out));
+            f << out << ", " << gVel.load() << std::endl;
+            i++;
+        } else {
+            block(jag.voltage_set(0));
+            if(f.is_open()) {
+                f.close();
+            }
+            ROS_INFO("Done!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1");
+            //Done
+        }
         jag_broadcaster.heartbeat();
-//        ROS_INFO("...sent heartbeat");
+
+
 
         std_msgs::Float32 posMsg;
         posMsg.data = gPos.load();
@@ -93,10 +113,7 @@ int main(int argc, char **argv) {
         velMsg.data = gVel.load();
         velPub.publish(velMsg);
 
-//        ROS_INFO("Spinning...");
         ros::spinOnce();
-//	    ROS_INFO("...done spinning");
         heartbeat_rate.sleep();
-//        ROS_INFO("Ending loop");
     }
 }
